@@ -2,8 +2,6 @@
 
 /**
  * Tile caching server implementation
- * 
- * OSM tile usage policy: https://operations.osmfoundation.org/policies/tiles/
  */
 class KaminariTile {
 

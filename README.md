@@ -29,4 +29,8 @@ Easy to setup OpenStreetMap tile caching server
 # chmod -R 777 kaminaritile/cache
 ```
 
+# Usage examples
+  * Ubilling maps: LEAFLET_TILE_LAYER="https://yourtileserver.ua/kaminaritile/?t={s}_{z}_{x}_{y}"
+
+
 [OpenStreetMap`s Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/)
