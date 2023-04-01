@@ -30,7 +30,11 @@ Easy to setup OpenStreetMap tile caching server
 ```
 
 # Usage examples
-  * Ubilling maps: LEAFLET_TILE_LAYER="https://yourtileserver.ua/kaminaritile/?t={s}_{z}_{x}_{y}"
 
+[Ubilling](https://wiki.ubilling.net.ua/doku.php?id=switchmap) just put following option into config/ymaps.ini config file:
+
+```
+LEAFLET_TILE_LAYER="https://yourtileserver.ua/kaminaritile/?t={s}_{z}_{x}_{y}"
+```
 
 [OpenStreetMap`s Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/)
