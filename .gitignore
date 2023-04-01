@@ -1,0 +1,6 @@
+!.gitignore
+!.htaccess
+exports/*
+!cache/index.html
+!cache/.htaccess
+!cache/*
