@@ -1,6 +1,8 @@
 # KaminariTile
 Easy to setup OpenStreetMap tile caching server
 
+[OpenStreetMap`s Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/)
+
 # System requirements
 
   * Apache 1.3/2.2/2.4 web server
@@ -37,4 +39,5 @@ Easy to setup OpenStreetMap tile caching server
 LEAFLET_TILE_LAYER="https://yourtileserver.ua/kaminaritile/?t={s}_{z}_{x}_{y}"
 ```
 
-[OpenStreetMap`s Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/)
+![kaminaritile](https://user-images.githubusercontent.com/1496954/229291357-63c7deb3-5221-4e48-b478-2e9c45a3d591.png)
+
