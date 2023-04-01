@@ -2,11 +2,9 @@
 
 /**
  * Config section
- * 
- * OpenStreetMap: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
  */
-$cachingTimeout = 604800;
-$remoteTileServer = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+$cachingTimeout = 604800; // tile server caching timeout in seconds
+$remoteTileServer = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'; //remote tile server custom URL template
 $debug = false; // logging into cache/debug.log
 /**
  * End of config section
