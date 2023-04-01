@@ -5,7 +5,7 @@
  * 
  * OSM tile usage policy: https://operations.osmfoundation.org/policies/tiles/
  */
-class KominariTile {
+class KaminariTile {
 
     /**
      * Default caching timeout in seconds
@@ -15,18 +15,25 @@ class KominariTile {
     protected $cacheTime = 604800; // 7 days by default
 
     /**
-     * User agent for remote tiles fetching
-     *
-     * @var string
-     */
-    protected $userAgent = 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0';
-
-    /**
      * Contains current instance remote tile server URL template
      *
      * @var string
      */
     protected $remoteTileTemplate = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+    /**
+     * Instance debug flag
+     *
+     * @var bool
+     */
+    protected $debugFlag = false;
+
+    /**
+     * User agent for remote tiles fetching
+     *
+     * @var string
+     */
+    protected $userAgent = 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0';
 
     /**
      * Default caching directory 
@@ -44,6 +51,11 @@ class KominariTile {
     const ROUTE_DELIMITER = '_';
 
     /**
+     * default logging path
+     */
+    const LOG_PATH = 'cache/debug.log';
+
+    /**
      * Tile parts offsets and other predefined stuff
      */
     const OFFSET_S = 0;
@@ -51,9 +63,43 @@ class KominariTile {
     const OFFSET_X = 2;
     const OFFSET_Y = 3;
 
+//                   ,/
+//                 ,'/
+//               ,' /
+//             ,'  /_____,
+//           .'____    ,'  
+//                /  ,'
+//               / ,'
+//              /,'
+//             /'
+
     public function __construct($template) {
         if (!empty($template)) {
             $this->setTemplate($template);
+        }
+    }
+
+    /**
+     * Sets instance debug flag
+     * 
+     * @param bool $debug
+     * 
+     * @return void
+     */
+    public function setDebug($state) {
+        $this->debugFlag = $state;
+    }
+
+    /**
+     * Sets caching timeout for current instance
+     * 
+     * @param int $timeout
+     * 
+     * @return void
+     */
+    public function setTimeout($timeout) {
+        if (!empty($timeout)) {
+            $this->cacheTime = $timeout;
         }
     }
 
@@ -66,6 +112,19 @@ class KominariTile {
      */
     protected function setTemplate($template) {
         $this->remoteTileTemplate = $template;
+    }
+
+    /**
+     * Logs some data to debug log
+     * 
+     * @param string $data
+     * 
+     * @return void
+     */
+    protected function logEvent($data) {
+        if ($this->debugFlag) {
+            file_put_contents(self::LOG_PATH, date("Y-m-d H:i:s") . ': ' . $data . PHP_EOL, FILE_APPEND);
+        }
     }
 
     /**
@@ -101,14 +160,17 @@ class KominariTile {
                 //creating sPath
                 mkdir($sPath, 0777);
                 chmod($sPath, 0777);
+                $this->logEvent('ALLOC CACHE PATH ' . $sPath);
                 //and zPath inside
                 mkdir($zPath, 0777);
                 chmod($zPath, 0777);
+                $this->logEvent('ALLOC CACHE PATH ' . $zPath);
             } else {
                 //just check for zPath
                 if (!file_exists($zPath)) {
                     mkdir($zPath, 0777);
                     chmod($zPath, 0777);
+                    $this->logEvent('ALLOC CACHE PATH ' . $zPath);
                 }
             }
         } else {
@@ -135,11 +197,17 @@ class KominariTile {
         $fullImageUrl = str_replace('{y}', $y, $fullImageUrl);
         $remoteTileServer = new OmaeUrl($fullImageUrl);
         $remoteTileServer->setUserAgent('Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0');
+        $this->logEvent('GET REMOTE TILE ' . $fullImageUrl);
         $receivedTile = $remoteTileServer->response();
         $error = $remoteTileServer->error();
         $httpCode = $remoteTileServer->httpCode();
         if (!$error AND $httpCode == 200) {
             $result = $receivedTile;
+            if ($this->debugFlag) {
+                $this->logEvent('GET REMOTE TILE SUCCESS');
+            }
+        } else {
+            $this->logEvent('GET REMOTE TILE FAILED HTTP CODE ' . $httpCode);
         }
         return($result);
     }
@@ -162,11 +230,15 @@ class KominariTile {
                 $updateCache = false;
                 if ((filemtime($expectedTilePath) > $cacheTime)) {
                     $updateCache = false;
+                    $this->logEvent('CACHE HIT');
                 } else {
                     $updateCache = true;
+                    unlink($expectedTilePath); //cache cleanup
+                    $this->logEvent('CACHE EXPIRED');
                 }
             } else {
                 $updateCache = true;
+                $this->logEvent('CACHE MISS');
             }
 
             //cache updating here
