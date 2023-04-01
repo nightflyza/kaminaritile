@@ -6,7 +6,7 @@ Easy to setup OpenStreetMap tile caching server
   * Apache 1.3/2.2/2.4 web server
   * PHP 5.3-7.4-8.2 + CURL extension
 
-# FreeBSD quick setup on 
+# FreeBSD quick setup
 
 ```
 # cd /usr/local/www/apache24/data/
@@ -18,7 +18,7 @@ Easy to setup OpenStreetMap tile caching server
 ```
 
 
-# Linux quick setup on 
+# Linux quick setup
 
 ```
 # cd /var/www/html/
