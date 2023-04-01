@@ -4,4 +4,4 @@ exports/*
 !cache/index.html
 !cache/.htaccess
 !cache/noimage.jpg
-!cache/*
+cache/*
