@@ -3,5 +3,7 @@
 exports/*
 !cache/index.html
 !cache/.htaccess
-!cache/noimage.jpg
+!cache/noimage.png
 cache/*
+!cache/log/
+cache/log/*.log

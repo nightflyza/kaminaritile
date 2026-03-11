@@ -10,7 +10,7 @@ class KaminariTile {
      *
      * @var int
      */
-    protected $cacheTime = 604800; // 7 days by default
+    protected $cacheTime = 1209600; // 14 days by default
 
     /**
      * Contains current instance remote tile server URL template
@@ -31,7 +31,28 @@ class KaminariTile {
      *
      * @var string
      */
-    protected $userAgent = 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0';
+    protected $userAgent = 'KaminariTileCache/1.0 (https://github.com/nightflyza/kaminaritile)';
+
+    /**
+     * Forward client Referer to remote tile server when fetching
+     *
+     * @var bool
+     */
+    protected $forwardReferer = false;
+
+    /**
+     * If non-empty and forwardReferer is on, send this instead of real Referer
+     *
+     * @var string
+     */
+    protected $overrideReferer = '';
+
+    /**
+     * Referer of current request (set in renderTile, used in getRemoteTile)
+     *
+     * @var string
+     */
+    protected $currentReferer = '';
 
     /**
      * Default caching directory 
@@ -51,7 +72,7 @@ class KaminariTile {
     /**
      * default logging path
      */
-    const LOG_PATH = 'cache/debug.log';
+    const LOG_PATH = 'cache/log/debug.log';
 
     /**
      * Tile parts offsets and other predefined stuff
@@ -102,6 +123,41 @@ class KaminariTile {
     }
 
     /**
+     * Sets user agent for current instance
+     * 
+     * @param string $userAgent
+     * 
+     * @return void
+     */
+    public function setUserAgent($userAgent='') {
+        if (!empty($userAgent)) {   
+            $this->userAgent = $userAgent;
+        }
+    }
+
+    /**
+     * Sets whether to forward client Referer to remote tile server
+     *
+     * @param bool $state
+     *
+     * @return void
+     */
+    public function setForwardReferer($state) {
+        $this->forwardReferer = (bool) $state;
+    }
+
+    /**
+     * Sets Referer override: when forwardReferer is on, send this instead of real Referer
+     *
+     * @param string $referer
+     *
+     * @return void
+     */
+    public function setOverrideReferer($referer) {
+        $this->overrideReferer = $referer !== null ? $referer : '';
+    }
+
+    /**
      * Sets current instance template
      * 
      * @param string $template remote tile server URL template with {s},{z},{x},{y} macro
@@ -113,15 +169,34 @@ class KaminariTile {
     }
 
     /**
-     * Logs some data to debug log
-     * 
-     * @param string $data
-     * 
+     * Ensures log directory exists, then appends a line to debug log
+     *
      * @return void
      */
-    protected function logEvent($data) {
+    protected function ensureLogDir() {
+        $logDir = dirname(self::LOG_PATH);
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0777, true);
+            @chmod($logDir, 0777);
+        }
+    }
+
+    /**
+     * Logs some data to debug log (date, client IP, referer if any, then message)
+     *
+     * @param string $data
+     * @param string $remoteTile
+     *
+     * @return void
+     */
+    protected function logEvent($data, $remoteTile='') {
         if ($this->debugFlag) {
-            file_put_contents(self::LOG_PATH, date("Y-m-d H:i:s") . ': ' . $data . PHP_EOL, FILE_APPEND);
+            $this->ensureLogDir();
+            $clientIp = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '-';
+            $referer = $this->currentReferer !== '' ? $this->currentReferer : '-';
+            $remoteTileLog =(!empty($remoteTile)) ? ' [' . $remoteTile . ']' : ''; 
+            $line = date('Y-m-d H:i:s') . ': ' . $clientIp . ' (' . $referer . ') ' . $data . $remoteTileLog . PHP_EOL;
+            file_put_contents(self::LOG_PATH, $line, FILE_APPEND);
         }
     }
 
@@ -194,7 +269,14 @@ class KaminariTile {
         $fullImageUrl = str_replace('{x}', $x, $fullImageUrl);
         $fullImageUrl = str_replace('{y}', $y, $fullImageUrl);
         $remoteTileServer = new OmaeUrl($fullImageUrl);
-        $remoteTileServer->setUserAgent('Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0');
+        $remoteTileServer->setUserAgent($this->userAgent);
+        if ($this->forwardReferer) {
+            $refererToSend = $this->overrideReferer !== '' ? $this->overrideReferer : $this->currentReferer;
+            if ($refererToSend !== '') {
+                $remoteTileServer->setReferrer($refererToSend);
+            }
+        }
+        
         $this->logEvent('GET REMOTE TILE ' . $fullImageUrl);
         $receivedTile = $remoteTileServer->response();
         $error = $remoteTileServer->error();
@@ -270,7 +352,9 @@ class KaminariTile {
      * @return void
      */
     public function renderTile($tileId) {
-        $tileFullPath = 'cache/noimage.jpg';
+        $this->currentReferer = isset($_SERVER['HTTP_REFERER']) ? (string) $_SERVER['HTTP_REFERER'] : '';
+        $tileFullPath = 'cache/noimage.png';
+        $this->logEvent('REQUEST TILE' , $tileId);
         if (!empty($tileId)) {
             $tileParts = explode(self::ROUTE_DELIMITER, $tileId);
             if (sizeof($tileParts) == 4) {
@@ -284,8 +368,70 @@ class KaminariTile {
 
         //rendering tile
         $tileContent = file_get_contents($tileFullPath);
+        header('Content-Type: image/png');
         print($tileContent);
         die();
+    }
+
+
+    /**
+     * Returns cache statistics (tile count and total size in bytes), excluding log dir and noimage
+     *
+     * @return array array('count' => int, 'bytes' => int)
+     */
+    public function getCacheStats() {
+        $count = 0;
+        $bytes = 0;
+        $cachePath = self::CACHE_PATH;
+        $logPrefix = $cachePath . 'log' . DIRECTORY_SEPARATOR;
+        if (!is_dir($cachePath)) {
+            return array('count' => 0, 'bytes' => 0);
+        }
+        try {
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($cachePath, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($it as $fi) {
+                if (!$fi->isFile()) {
+                    continue;
+                }
+                $path = $fi->getPathname();
+                if (strpos($path, $logPrefix) !== false || $fi->getFilename() === 'noimage.png') {
+                    continue;
+                }
+                $count++;
+                $bytes += $fi->getSize();
+            }
+        } catch (Exception $e) {
+            // ignore
+        }
+        return array('count' => $count, 'bytes' => $bytes);
+    }
+
+    /**
+     * Returns base URL of the current script (no query string) for tile layer
+     *
+     * @return string
+     */
+    protected function getTileLayerBaseUrl() {
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+        $uri = isset($_SERVER['REQUEST_URI']) ? strtok($_SERVER['REQUEST_URI'], '?') : '/';
+        return $protocol . '://' . $host . $uri;
+    }
+
+    /**
+     * Renders preview map (Leaflet) using current caching server as tile source
+     *
+     * @return void
+     */
+    public function renderPreviewMap() {
+        $baseUrl = $this->getTileLayerBaseUrl();
+        $tileUrlTemplate = $baseUrl . '?' . self::ROUTE_TILE . '={s}' . self::ROUTE_DELIMITER . '{z}' . self::ROUTE_DELIMITER . '{x}' . self::ROUTE_DELIMITER . '{y}';
+        $cacheStats = $this->getCacheStats();
+        $preview = new PreviewMap($tileUrlTemplate, $cacheStats);
+        $preview->render();
     }
 
 }

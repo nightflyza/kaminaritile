@@ -39,5 +39,5 @@ Easy to setup OpenStreetMap tile caching server
 LEAFLET_TILE_LAYER="https://yourtileserver.ua/kaminaritile/?t={s}_{z}_{x}_{y}"
 ```
 
-![kaminaritile](https://user-images.githubusercontent.com/1496954/229291357-63c7deb3-5221-4e48-b478-2e9c45a3d591.png)
+<img width="1548" height="779" alt="kaminaritile" src="https://github.com/user-attachments/assets/7a8005ea-3007-4b46-8ebb-503db14fc259" />
 
