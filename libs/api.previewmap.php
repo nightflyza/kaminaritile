@@ -72,7 +72,7 @@ class PreviewMap {
             . ' | <a href="https://github.com/nightflyza/kaminaritile">KaminariTile</a>';
         $tileUrlTemplate = $this->tileUrlTemplate;
         $statsHtml = '';
-        if (!empty($this->cacheStats) && isset($this->cacheStats['count'])) {
+        if (!empty($this->cacheStats) and isset($this->cacheStats['count'])) {
             $cnt = (int) $this->cacheStats['count'];
             $bytes = isset($this->cacheStats['bytes']) ? (int) $this->cacheStats['bytes'] : 0;
             $statsHtml = ' | ' . $cnt . ' ' . ($cnt === 1 ? 'tile' : 'tiles') . ', ' . $this->formatBytes($bytes);

@@ -369,6 +369,10 @@ class KaminariTile {
         //rendering tile
         $tileContent = file_get_contents($tileFullPath);
         header('Content-Type: image/png');
+        header('Content-Length: ' . strlen($tileContent));
+        header('Cache-Control: public, max-age=' . (int) $this->cacheTime);
+        header('Expires: ' . gmdate('D, d M Y H:i:s', time() + (int) $this->cacheTime) . ' GMT');
+        header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime($tileFullPath)) . ' GMT');
         print($tileContent);
         die();
     }
@@ -397,7 +401,7 @@ class KaminariTile {
                     continue;
                 }
                 $path = $fi->getPathname();
-                if (strpos($path, $logPrefix) !== false || $fi->getFilename() === 'noimage.png') {
+                if (strpos($path, $logPrefix) !== false or $fi->getFilename() === 'noimage.png') {
                     continue;
                 }
                 $count++;
@@ -415,7 +419,7 @@ class KaminariTile {
      * @return string
      */
     protected function getTileLayerBaseUrl() {
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $protocol = (!empty($_SERVER['HTTPS']) and $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
         $uri = isset($_SERVER['REQUEST_URI']) ? strtok($_SERVER['REQUEST_URI'], '?') : '/';
         return $protocol . '://' . $host . $uri;
