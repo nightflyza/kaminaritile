@@ -55,6 +55,13 @@ class KaminariTile {
     protected $currentReferer = '';
 
     /**
+     * Force https for base URL (e.g. when nginx proxies HTTP backend to HTTPS and does not pass X-Forwarded-Proto)
+     *
+     * @var bool
+     */
+    protected $forceHttpsBaseUrl = false;
+
+    /**
      * Default caching directory 
      */
     const CACHE_PATH = 'cache/';
@@ -160,6 +167,16 @@ class KaminariTile {
      */
     public function setOverrideReferer($referer) {
         $this->overrideReferer = $referer !== null ? $referer : '';
+    }
+
+    /**
+     * Force https for tile/base URL (use when behind HTTPS proxy that does not send X-Forwarded-Proto)
+     *
+     * @param bool $state
+     * @return void
+     */
+    public function setForceHttpsBaseUrl($state) {
+        $this->forceHttpsBaseUrl = (bool) $state;
     }
 
     /**
@@ -497,7 +514,18 @@ class KaminariTile {
      * @return string
      */
     protected function getTileLayerBaseUrl() {
-        $protocol = (!empty($_SERVER['HTTPS']) and $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $protocol = 'http';
+        if ($this->forceHttpsBaseUrl) {
+            $protocol = 'https';
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) and strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') {
+            $protocol = 'https';
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PORT']) and (int) $_SERVER['HTTP_X_FORWARDED_PORT'] === 443) {
+            $protocol = 'https';
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) and strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on') {
+            $protocol = 'https';
+        } elseif (!empty($_SERVER['HTTPS']) and $_SERVER['HTTPS'] !== 'off') {
+            $protocol = 'https';
+        }
         $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
         $uri = isset($_SERVER['REQUEST_URI']) ? strtok($_SERVER['REQUEST_URI'], '?') : '/';
         return $protocol . '://' . $host . $uri;
