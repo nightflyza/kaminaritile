@@ -76,6 +76,13 @@ class PreviewMap {
             $cnt = (int) $this->cacheStats['count'];
             $bytes = isset($this->cacheStats['bytes']) ? (int) $this->cacheStats['bytes'] : 0;
             $statsHtml = ' | ' . $cnt . ' ' . ($cnt === 1 ? 'tile' : 'tiles') . ', ' . $this->formatBytes($bytes);
+            $hits = isset($this->cacheStats['hits']) ? (int) $this->cacheStats['hits'] : 0;
+            $misses = isset($this->cacheStats['misses']) ? (int) $this->cacheStats['misses'] : 0;
+            $total = $hits + $misses;
+            if ($total > 0) {
+                $pct = round(100.0 * $hits / $total);
+                $statsHtml .= ' | ' . $pct . '% cache efficiency';
+            }
         }
         $captionLine = htmlspecialchars($tileUrlTemplate) . $statsHtml;
         header('Content-Type: text/html; charset=utf-8');

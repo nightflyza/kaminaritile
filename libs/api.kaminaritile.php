@@ -75,6 +75,11 @@ class KaminariTile {
     const LOG_PATH = 'cache/log/debug.log';
 
     /**
+     * Effectiveness counters (hits/misses) stored as JSON
+     */
+    const STATS_FILE = 'cache/.stats.json';
+
+    /**
      * Tile parts offsets and other predefined stuff
      */
     const OFFSET_S = 0;
@@ -323,6 +328,7 @@ class KaminariTile {
 
             //cache updating here
             if ($updateCache) {
+                $this->recordEffectiveness('misses');
                 $s = $tileParts[self::OFFSET_S];
                 $z = $tileParts[self::OFFSET_Z];
                 $x = $tileParts[self::OFFSET_X];
@@ -337,6 +343,7 @@ class KaminariTile {
                     $result = $expectedTilePath;
                 }
             } else {
+                $this->recordEffectiveness('hits');
                 //cache is valid, return its path
                 $result = $expectedTilePath;
             }
@@ -379,9 +386,78 @@ class KaminariTile {
 
 
     /**
-     * Returns cache statistics (tile count and total size in bytes), excluding log dir and noimage
+     * Reads effectiveness counters from stats file (with shared lock)
      *
-     * @return array array('count' => int, 'bytes' => int)
+     * @return array array('hits' => int, 'misses' => int)
+     */
+    protected function readEffectivenessStats() {
+        $path = self::STATS_FILE;
+        $default = array('hits' => 0, 'misses' => 0);
+        if (!file_exists($path)) {
+            return $default;
+        }
+        $fp = @fopen($path, 'rb');
+        if (!$fp) {
+            return $default;
+        }
+        if (!flock($fp, LOCK_SH)) {
+            fclose($fp);
+            return $default;
+        }
+        $raw = stream_get_contents($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        $data = @json_decode($raw, true);
+        if (!is_array($data)) {
+            return $default;
+        }
+        return array(
+            'hits' => isset($data['hits']) ? (int) $data['hits'] : 0,
+            'misses' => isset($data['misses']) ? (int) $data['misses'] : 0
+        );
+    }
+
+    /**
+     * Increments hit or miss counter in stats file (exclusive lock, read-modify-write)
+     *
+     * @param string $type 'hits' or 'misses'
+     * @return void
+     */
+    protected function recordEffectiveness($type) {
+        if ($type !== 'hits' and $type !== 'misses') {
+            return;
+        }
+        $path = self::STATS_FILE;
+        $dir = dirname($path);
+        if (!is_dir($dir) or !is_writable($dir)) {
+            return;
+        }
+        $fp = @fopen($path, 'c+b');
+        if (!$fp) {
+            return;
+        }
+        if (!flock($fp, LOCK_EX)) {
+            fclose($fp);
+            return;
+        }
+        $raw = stream_get_contents($fp);
+        $data = is_string($raw) ? @json_decode($raw, true) : null;
+        if (!is_array($data)) {
+            $data = array('hits' => 0, 'misses' => 0);
+        }
+        $data[$type] = (isset($data[$type]) ? (int) $data[$type] : 0) + 1;
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($data));
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
+
+    /**
+     * Returns cache statistics (tile count, bytes, hits, misses), excluding log dir, noimage, .stats.json
+     *
+     * @return array array('count' => int, 'bytes' => int, 'hits' => int, 'misses' => int)
      */
     public function getCacheStats() {
         $count = 0;
@@ -389,7 +465,8 @@ class KaminariTile {
         $cachePath = self::CACHE_PATH;
         $logPrefix = $cachePath . 'log' . DIRECTORY_SEPARATOR;
         if (!is_dir($cachePath)) {
-            return array('count' => 0, 'bytes' => 0);
+            $eff = $this->readEffectivenessStats();
+            return array('count' => 0, 'bytes' => 0, 'hits' => $eff['hits'], 'misses' => $eff['misses']);
         }
         try {
             $it = new RecursiveIteratorIterator(
@@ -401,7 +478,7 @@ class KaminariTile {
                     continue;
                 }
                 $path = $fi->getPathname();
-                if (strpos($path, $logPrefix) !== false or $fi->getFilename() === 'noimage.png') {
+                if (strpos($path, $logPrefix) !== false or $fi->getFilename() === 'noimage.png' or $fi->getFilename() === '.stats.json') {
                     continue;
                 }
                 $count++;
@@ -410,7 +487,8 @@ class KaminariTile {
         } catch (Exception $e) {
             // ignore
         }
-        return array('count' => $count, 'bytes' => $bytes);
+        $eff = $this->readEffectivenessStats();
+        return array('count' => $count, 'bytes' => $bytes, 'hits' => $eff['hits'], 'misses' => $eff['misses']);
     }
 
     /**
