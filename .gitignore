@@ -1,9 +1,9 @@
 !.gitignore
 !.htaccess
 exports/*
-!cache/index.html
-!cache/.htaccess
-!cache/noimage.png
 cache/*
+!cache/.htaccess
+!cache/index.html
+!cache/noimage.png
 !cache/log/
 cache/log/*.log
