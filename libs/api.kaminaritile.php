@@ -299,17 +299,17 @@ class KaminariTile {
             }
         }
         
-        $this->logEvent('GET REMOTE TILE ' . $fullImageUrl);
+        $this->logEvent('TRY REMOTE TILE' , $fullImageUrl);
         $receivedTile = $remoteTileServer->response();
         $error = $remoteTileServer->error();
         $httpCode = $remoteTileServer->httpCode();
         if (!$error AND $httpCode == 200) {
             $result = $receivedTile;
             if ($this->debugFlag) {
-                $this->logEvent('GET REMOTE TILE SUCCESS');
+                $this->logEvent('GET REMOTE TILE SUCCESS', $fullImageUrl);
             }
         } else {
-            $this->logEvent('GET REMOTE TILE FAILED HTTP CODE ' . $httpCode);
+            $this->logEvent('GET REMOTE TILE FAILED HTTP CODE ' . $httpCode, $fullImageUrl);
         }
         return($result);
     }
@@ -332,15 +332,15 @@ class KaminariTile {
                 $updateCache = false;
                 if ((filemtime($expectedTilePath) > $cacheTime)) {
                     $updateCache = false;
-                    $this->logEvent('CACHE HIT');
+                    $this->logEvent('CACHE HIT', $expectedTilePath);
                 } else {
                     $updateCache = true;
                     unlink($expectedTilePath); //cache cleanup
-                    $this->logEvent('CACHE EXPIRED');
+                    $this->logEvent('CACHE EXPIRED', $expectedTilePath);
                 }
             } else {
                 $updateCache = true;
-                $this->logEvent('CACHE MISS');
+                $this->logEvent('CACHE MISS', $expectedTilePath);
             }
 
             //cache updating here
