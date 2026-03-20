@@ -6,7 +6,7 @@ Easy to setup OpenStreetMap tile caching server
 # System requirements
 
   * Apache 1.3/2.2/2.4 web server
-  * PHP 5.3-8.4 + CURL extension
+  * PHP 5.3-8.5 + CURL extension
 
 # FreeBSD quick setup
 
